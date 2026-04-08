@@ -1,0 +1,13 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(dir C:\\\\Users\\\\Projeto\\\\Desktop\\\\controleestudo:*)",
+      "Bash(npm --version)",
+      "Bash(npm install:*)",
+      "Bash(npx prisma:*)",
+      "Bash(npx next:*)",
+      "Bash(taskkill /F /IM node.exe)",
+      "Bash(cmd /c \"taskkill /F /IM node.exe\")"
+    ]
+  }
+}

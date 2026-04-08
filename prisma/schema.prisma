@@ -1,0 +1,137 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "sqlite"
+  url      = env("DATABASE_URL")
+}
+
+model User {
+  id           String       @id @default(cuid())
+  name         String
+  email        String       @unique
+  passwordHash String
+  role         String       @default("user") // user | admin
+  invitedById  String?
+  invitedBy    User?        @relation("Invites", fields: [invitedById], references: [id])
+  invitees     User[]       @relation("Invites")
+  inviteCodes  InviteCode[]
+  createdAt    DateTime     @default(now())
+}
+
+model InviteCode {
+  id          String    @id @default(cuid())
+  code        String    @unique
+  createdById String
+  createdBy   User      @relation(fields: [createdById], references: [id])
+  usedById    String?
+  isUsed      Boolean   @default(false)
+  expiresAt   DateTime?
+  createdAt   DateTime  @default(now())
+}
+
+model StudyPlan {
+  id          String   @id @default(cuid())
+  title       String
+  subject     String
+  description String?
+  studyDate   DateTime
+  status      String   @default("pending") // pending | in_progress | done
+  createdAt   DateTime @default(now())
+}
+
+model Exercise {
+  id             String            @id @default(cuid())
+  title          String            @default("")
+  subject        String
+  topic          String
+  difficulty     String            // easy | medium | hard
+  type           String            // theory | multiple_choice | programming
+  language       String?
+  question       String
+  options        String?           // JSON string para multiple_choice
+  correctAnswer  String?
+  expectedAnswer String?
+  inputExample   String?
+  outputExample  String?
+  testCases      String?           // JSON array de strings
+  explanation    String?
+  points         Int
+  createdAt      DateTime          @default(now())
+  attempts       ExerciseAttempt[]
+  reviewLogs     ReviewLog[]
+  examAnswers    ExamAnswer[]
+}
+
+model ExerciseAttempt {
+  id              String   @id @default(cuid())
+  exerciseId      String
+  exercise        Exercise @relation(fields: [exerciseId], references: [id])
+  answerText      String?
+  answerCode      String?
+  aiFeedback      String?
+  aiSummary       String?
+  aiUnderstanding String?
+  aiLogic         String?
+  aiSyntax        String?
+  aiImprovements  String?
+  aiFinalVerdict  String?
+  score           Int      @default(0)
+  pointsAwarded   Boolean  @default(false)
+  completedAt     DateTime @default(now())
+}
+
+model DailyScore {
+  id          String   @id @default(cuid())
+  date        DateTime @unique
+  totalPoints Int      @default(0)
+}
+
+model ExamSession {
+  id             String       @id @default(cuid())
+  subject        String
+  topic          String
+  difficulty     String
+  type           String
+  totalQuestions Int
+  exerciseIds    String       // JSON array of exercise IDs
+  score          Int          @default(0)   // 0-100 percentage
+  pointsEarned   Int          @default(0)
+  startedAt      DateTime     @default(now())
+  finishedAt     DateTime?
+  answers        ExamAnswer[]
+}
+
+model ExamAnswer {
+  id             String      @id @default(cuid())
+  examSessionId  String
+  examSession    ExamSession @relation(fields: [examSessionId], references: [id])
+  exerciseId     String
+  exercise       Exercise    @relation(fields: [exerciseId], references: [id])
+  answerText     String?
+  answerCode     String?
+  aiSummary      String?
+  aiFinalVerdict String?
+  score          Int         @default(0)
+  createdAt      DateTime    @default(now())
+}
+
+model UserStats {
+  id             String    @id @default(cuid())
+  currentStreak  Int       @default(0)
+  bestStreak     Int       @default(0)
+  lastActiveDate DateTime?
+  updatedAt      DateTime  @updatedAt
+}
+
+model ReviewLog {
+  id         String   @id @default(cuid())
+  exerciseId String
+  exercise   Exercise @relation(fields: [exerciseId], references: [id])
+  language   String?
+  code       String?
+  feedback   String?
+  score      Int      @default(0)
+  createdAt  DateTime @default(now())
+}
