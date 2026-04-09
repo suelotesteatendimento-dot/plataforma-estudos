@@ -10,7 +10,10 @@
       "Bash(cmd /c \"taskkill /F /IM node.exe\")",
       "Bash(npx tsc:*)",
       "Bash(DATABASE_URL=\"postgresql://user:pass@localhost:5432/db\" npx prisma:*)",
-      "Bash(DATABASE_URL=\"postgresql://user:pass@localhost:5432/db\" NEXT_PUBLIC_SUPABASE_URL=\"https://xxx.supabase.co\" NEXT_PUBLIC_SUPABASE_ANON_KEY=\"eyJ\" SUPABASE_SERVICE_ROLE_KEY=\"eyJ\" GROQ_API_KEY=\"gsk_x\" npx next build)"
+      "Bash(DATABASE_URL=\"postgresql://user:pass@localhost:5432/db\" NEXT_PUBLIC_SUPABASE_URL=\"https://xxx.supabase.co\" NEXT_PUBLIC_SUPABASE_ANON_KEY=\"eyJ\" SUPABASE_SERVICE_ROLE_KEY=\"eyJ\" GROQ_API_KEY=\"gsk_x\" npx next build)",
+      "Bash(npm show:*)",
+      "Bash(node -e \"const v=require\\('fs'\\).readFileSync\\('/dev/stdin','utf8'\\); const arr=JSON.parse\\(v\\); console.log\\(arr.filter\\(x=>x.startsWith\\('15.'\\)\\).slice\\(-10\\).join\\('\\\\n'\\)\\)\")",
+      "Bash(npm audit:*)"
     ]
   }
 }
