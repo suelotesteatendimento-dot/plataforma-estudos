@@ -120,7 +120,7 @@ export function GerarClient() {
         </CardHeader>
         <CardContent className="space-y-5">
           {/* Subject + Topic */}
-          <div className="grid grid-cols-2 gap-3">
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
             <div className="space-y-1.5">
               <Label htmlFor="gen-subject">Matéria</Label>
               <Input
@@ -200,7 +200,7 @@ export function GerarClient() {
           )}
 
           {/* Difficulty + Quantity */}
-          <div className="grid grid-cols-2 gap-3">
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
             <div className="space-y-1.5">
               <Label>Dificuldade</Label>
               <Select

@@ -3,29 +3,18 @@ generator client {
 }
 
 datasource db {
-  provider = "sqlite"
-  url      = env("DATABASE_URL")
+  provider  = "postgresql"
+  url       = env("DATABASE_URL")
+  directUrl = env("DIRECT_URL")
 }
 
-model User {
-  id           String       @id @default(cuid())
-  name         String
-  email        String       @unique
-  passwordHash String
-  role         String       @default("user") // user | admin
-  invitedById  String?
-  invitedBy    User?        @relation("Invites", fields: [invitedById], references: [id])
-  invitees     User[]       @relation("Invites")
-  inviteCodes  InviteCode[]
-  createdAt    DateTime     @default(now())
-}
+// profiles e invite_codes são gerenciados via SQL/Supabase diretamente
 
 model InviteCode {
   id          String    @id @default(cuid())
   code        String    @unique
-  createdById String
-  createdBy   User      @relation(fields: [createdById], references: [id])
-  usedById    String?
+  createdById String    // auth.users(id)
+  usedById    String?   // auth.users(id)
   isUsed      Boolean   @default(false)
   expiresAt   DateTime?
   createdAt   DateTime  @default(now())
@@ -33,39 +22,46 @@ model InviteCode {
 
 model StudyPlan {
   id          String   @id @default(cuid())
+  userId      String
   title       String
   subject     String
   description String?
   studyDate   DateTime
   status      String   @default("pending") // pending | in_progress | done
   createdAt   DateTime @default(now())
+
+  @@index([userId])
 }
 
 model Exercise {
   id             String            @id @default(cuid())
+  userId         String
   title          String            @default("")
   subject        String
   topic          String
-  difficulty     String            // easy | medium | hard
-  type           String            // theory | multiple_choice | programming
+  difficulty     String
+  type           String
   language       String?
   question       String
-  options        String?           // JSON string para multiple_choice
+  options        String?
   correctAnswer  String?
   expectedAnswer String?
   inputExample   String?
   outputExample  String?
-  testCases      String?           // JSON array de strings
+  testCases      String?
   explanation    String?
   points         Int
   createdAt      DateTime          @default(now())
   attempts       ExerciseAttempt[]
   reviewLogs     ReviewLog[]
   examAnswers    ExamAnswer[]
+
+  @@index([userId])
 }
 
 model ExerciseAttempt {
   id              String   @id @default(cuid())
+  userId          String
   exerciseId      String
   exercise        Exercise @relation(fields: [exerciseId], references: [id])
   answerText      String?
@@ -80,27 +76,38 @@ model ExerciseAttempt {
   score           Int      @default(0)
   pointsAwarded   Boolean  @default(false)
   completedAt     DateTime @default(now())
+
+  @@index([userId])
 }
 
 model DailyScore {
   id          String   @id @default(cuid())
-  date        DateTime @unique
+  userId      String
+  date        DateTime
   totalPoints Int      @default(0)
+
+  @@unique([date, userId])
+  @@index([userId])
 }
 
 model ExamSession {
-  id             String       @id @default(cuid())
-  subject        String
-  topic          String
-  difficulty     String
-  type           String
-  totalQuestions Int
-  exerciseIds    String       // JSON array of exercise IDs
-  score          Int          @default(0)   // 0-100 percentage
-  pointsEarned   Int          @default(0)
-  startedAt      DateTime     @default(now())
-  finishedAt     DateTime?
-  answers        ExamAnswer[]
+  id              String       @id @default(cuid())
+  userId          String
+  subject         String
+  topic           String
+  difficulty      String
+  type            String
+  totalQuestions  Int
+  exerciseIds     String
+  score           Int          @default(0)
+  pointsEarned    Int          @default(0)
+  durationMinutes Int?
+  finishReason    String?      // "manual" | "time_up"
+  startedAt       DateTime     @default(now())
+  finishedAt      DateTime?
+  answers         ExamAnswer[]
+
+  @@index([userId])
 }
 
 model ExamAnswer {
@@ -119,6 +126,7 @@ model ExamAnswer {
 
 model UserStats {
   id             String    @id @default(cuid())
+  userId         String    @unique
   currentStreak  Int       @default(0)
   bestStreak     Int       @default(0)
   lastActiveDate DateTime?
@@ -127,6 +135,7 @@ model UserStats {
 
 model ReviewLog {
   id         String   @id @default(cuid())
+  userId     String
   exerciseId String
   exercise   Exercise @relation(fields: [exerciseId], references: [id])
   language   String?
@@ -134,4 +143,32 @@ model ReviewLog {
   feedback   String?
   score      Int      @default(0)
   createdAt  DateTime @default(now())
+
+  @@index([userId])
+}
+
+model FlashcardSet {
+  id         String   @id @default(cuid())
+  userId     String
+  subject    String
+  topic      String
+  difficulty String
+  cards      String   // JSON: [{front, back}]
+  createdAt  DateTime @default(now())
+
+  @@index([userId])
+}
+
+model StudySummary {
+  id        String   @id @default(cuid())
+  userId    String
+  subject   String
+  topic     String
+  level     String
+  objective String
+  title     String
+  content   String   // JSON: {introduction, mainContent, importantTopics, examples, commonMistakes, examTips, finalReview}
+  createdAt DateTime @default(now())
+
+  @@index([userId])
 }

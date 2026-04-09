@@ -1,18 +1,21 @@
 export const dynamic = "force-dynamic";
 
 import { prisma } from "@/lib/prisma";
+import { createClient } from "@/lib/supabase/server";
+import { redirect } from "next/navigation";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Progress } from "@/components/ui/progress";
 import { Separator } from "@/components/ui/separator";
 import {
-  Trophy, BookOpen, CheckCircle2, TrendingUp, Dumbbell, CalendarCheck, Flame,
+  Trophy, BookOpen, CheckCircle2, TrendingUp, Dumbbell,
+  CalendarCheck, Star, GraduationCap,
 } from "lucide-react";
 import { difficultyLabel, difficultyColor, formatDate } from "@/lib/utils";
 import { StatCard } from "@/components/dashboard/stat-card";
 import { DashboardToday } from "@/components/dashboard/dashboard-today";
 
-async function getDashboardData() {
+async function getDashboardData(userId: string) {
   const today = new Date();
   today.setHours(0, 0, 0, 0);
   const tomorrow = new Date(today);
@@ -27,12 +30,14 @@ async function getDashboardData() {
     todayPlans,
     weekScores,
     userStats,
+    examSessions,
   ] = await Promise.all([
-    prisma.studyPlan.count(),
-    prisma.studyPlan.count({ where: { status: "done" } }),
-    prisma.exerciseAttempt.count(),
-    prisma.dailyScore.findMany(),
+    prisma.studyPlan.count({ where: { userId } }),
+    prisma.studyPlan.count({ where: { userId, status: "done" } }),
+    prisma.exerciseAttempt.count({ where: { userId } }),
+    prisma.dailyScore.findMany({ where: { userId } }),
     prisma.exerciseAttempt.findMany({
+      where: { userId },
       orderBy: { completedAt: "desc" },
       take: 5,
       include: {
@@ -40,14 +45,31 @@ async function getDashboardData() {
       },
     }),
     prisma.studyPlan.findMany({
-      where: { studyDate: { gte: today, lt: tomorrow } },
+      where: { userId, studyDate: { gte: today, lt: tomorrow } },
       orderBy: { studyDate: "asc" },
     }),
-    prisma.dailyScore.findMany({ orderBy: { date: "asc" }, take: 7 }),
-    prisma.userStats.findFirst(),
+    prisma.dailyScore.findMany({
+      where: { userId },
+      orderBy: { date: "asc" },
+      take: 7,
+    }),
+    prisma.userStats.findUnique({ where: { userId } }),
+    prisma.examSession.findMany({
+      where: { userId, finishedAt: { not: null } },
+      select: { score: true },
+    }),
   ]);
 
   const totalPoints = allScores.reduce((acc, s) => acc + s.totalPoints, 0);
+
+  const bestDay = allScores.length > 0
+    ? allScores.reduce((best, s) => (s.totalPoints > best.totalPoints ? s : best), allScores[0])
+    : null;
+
+  const totalExams = examSessions.length;
+  const examAvgScore = totalExams > 0
+    ? Math.round(examSessions.reduce((sum, e) => sum + (e.score ?? 0), 0) / totalExams)
+    : null;
 
   return {
     totalPlans,
@@ -59,11 +81,18 @@ async function getDashboardData() {
     weekScores,
     currentStreak: userStats?.currentStreak ?? 0,
     bestStreak: userStats?.bestStreak ?? 0,
+    bestDay,
+    totalExams,
+    examAvgScore,
   };
 }
 
 export default async function DashboardPage() {
-  const data = await getDashboardData();
+  const supabase = await createClient();
+  const { data: { user } } = await supabase.auth.getUser();
+  if (!user) redirect("/login");
+
+  const data = await getDashboardData(user.id);
   const maxWeekScore = Math.max(...data.weekScores.map((s) => s.totalPoints), 1);
 
   const completionRate =
@@ -85,7 +114,7 @@ export default async function DashboardPage() {
         <p className="text-muted-foreground text-sm mt-1 capitalize">{dateLabel}</p>
       </div>
 
-      {/* Stat Cards */}
+      {/* Stat Cards — 3 cols desktop, 2 mobile */}
       <div className="grid grid-cols-2 lg:grid-cols-3 gap-4">
         <StatCard
           label="Estudos planejados"
@@ -123,19 +152,66 @@ export default async function DashboardPage() {
           iconColor="text-purple-600"
           suffix="tentativas"
         />
-        <StatCard
-          label="Sequência atual"
-          value={data.currentStreak}
-          icon={Flame}
-          iconBg="bg-orange-100"
-          iconColor="text-orange-600"
-          suffix="dias"
-          trend={
-            data.bestStreak > 0
-              ? { value: data.bestStreak, label: "melhor sequência" }
-              : undefined
-          }
-        />
+        {/* Card: Melhor dia */}
+        <Card>
+          <CardContent className="p-5">
+            <div className="flex items-start justify-between gap-3">
+              <div className="space-y-1 min-w-0">
+                <p className="text-xs text-muted-foreground">Melhor dia</p>
+                {data.bestDay ? (
+                  <>
+                    <div className="flex items-baseline gap-1">
+                      <p className="text-2xl font-bold leading-none">
+                        {data.bestDay.totalPoints}
+                      </p>
+                      <span className="text-xs text-muted-foreground">pts</span>
+                    </div>
+                    <p className="text-xs text-muted-foreground truncate">
+                      {formatDate(data.bestDay.date)}
+                    </p>
+                  </>
+                ) : (
+                  <>
+                    <p className="text-2xl font-bold leading-none text-muted-foreground/40">
+                      —
+                    </p>
+                    <p className="text-xs text-muted-foreground">
+                      Sem dados ainda
+                    </p>
+                  </>
+                )}
+              </div>
+              <div className="w-10 h-10 rounded-lg flex items-center justify-center shrink-0 bg-amber-100">
+                <Star className="w-5 h-5 text-amber-600" />
+              </div>
+            </div>
+          </CardContent>
+        </Card>
+
+        {/* Card: Provas realizadas */}
+        <Card>
+          <CardContent className="p-5">
+            <div className="flex items-start justify-between gap-3">
+              <div className="space-y-1 min-w-0">
+                <p className="text-xs text-muted-foreground">Provas realizadas</p>
+                <div className="flex items-baseline gap-1">
+                  <p className="text-2xl font-bold leading-none">{data.totalExams}</p>
+                  <span className="text-xs text-muted-foreground">
+                    {data.totalExams === 1 ? "prova" : "provas"}
+                  </span>
+                </div>
+                <p className="text-xs text-muted-foreground">
+                  {data.examAvgScore !== null
+                    ? `Média: ${data.examAvgScore}/100`
+                    : "Nenhuma prova ainda"}
+                </p>
+              </div>
+              <div className="w-10 h-10 rounded-lg flex items-center justify-center shrink-0 bg-indigo-100">
+                <GraduationCap className="w-5 h-5 text-indigo-600" />
+              </div>
+            </div>
+          </CardContent>
+        </Card>
       </div>
 
       {/* Middle row */}
@@ -161,7 +237,7 @@ export default async function DashboardPage() {
           </CardContent>
         </Card>
 
-        {/* Weekly points chart */}
+        {/* Weekly points */}
         <Card>
           <CardHeader className="pb-3">
             <CardTitle className="text-base flex items-center gap-2">
@@ -172,7 +248,7 @@ export default async function DashboardPage() {
           <CardContent>
             {data.weekScores.length === 0 ? (
               <div className="text-center py-8">
-                <TrendingUp className="w-8 h-8 mx-auto text-muted-foreground/50 mb-2" />
+                <TrendingUp className="w-8 h-8 mx-auto text-muted-foreground/40 mb-2" />
                 <p className="text-sm text-muted-foreground">
                   Nenhum ponto registrado ainda.
                 </p>
@@ -197,7 +273,7 @@ export default async function DashboardPage() {
         </Card>
       </div>
 
-      {/* Completion progress */}
+      {/* Completion bar */}
       {data.totalPlans > 0 && (
         <Card>
           <CardContent className="p-5">
@@ -227,7 +303,7 @@ export default async function DashboardPage() {
         <CardContent>
           {data.recentAttempts.length === 0 ? (
             <div className="text-center py-8">
-              <Dumbbell className="w-8 h-8 mx-auto text-muted-foreground/50 mb-2" />
+              <Dumbbell className="w-8 h-8 mx-auto text-muted-foreground/40 mb-2" />
               <p className="text-sm text-muted-foreground">
                 Nenhuma tentativa ainda. Comece praticando!
               </p>

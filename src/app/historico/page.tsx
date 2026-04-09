@@ -2,7 +2,9 @@ export const dynamic = "force-dynamic";
 
 import Link from "next/link";
 import { prisma } from "@/lib/prisma";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { createClient } from "@/lib/supabase/server";
+import { redirect } from "next/navigation";
+import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
@@ -12,8 +14,9 @@ import {
 } from "lucide-react";
 import { difficultyLabel, difficultyColor, formatDate } from "@/lib/utils";
 
-async function getData() {
+async function getData(userId: string) {
   const attempts = await prisma.exerciseAttempt.findMany({
+    where: { userId },
     orderBy: { completedAt: "desc" },
     include: {
       exercise: {
@@ -59,7 +62,11 @@ const TYPE_LABELS: Record<string, string> = {
 };
 
 export default async function HistoricoPage() {
-  const { attempts } = await getData();
+  const supabase = await createClient();
+  const { data: { user } } = await supabase.auth.getUser();
+  if (!user) redirect("/login");
+
+  const { attempts } = await getData(user.id);
   const total = attempts.reduce((s, a) => s + a.score, 0);
 
   return (
@@ -124,22 +131,17 @@ export default async function HistoricoPage() {
 
                 const pct =
                   attempt.exercise.points > 0
-                    ? Math.round(
-                        (attempt.score / attempt.exercise.points) * 100
-                      )
+                    ? Math.round((attempt.score / attempt.exercise.points) * 100)
                     : 0;
 
                 return (
                   <Card key={attempt.id}>
                     <CardContent className="p-4">
                       <div className="flex items-start gap-3">
-                        {/* Verdict icon */}
                         <VerdictIcon
                           className={`w-5 h-5 mt-0.5 shrink-0 ${verdictColor}`}
                         />
-
                         <div className="flex-1 min-w-0 space-y-2">
-                          {/* Header row */}
                           <div className="flex items-start justify-between gap-2 flex-wrap">
                             <div>
                               <p className="font-medium text-sm">
@@ -149,8 +151,7 @@ export default async function HistoricoPage() {
                                 <span>{attempt.exercise.subject}</span>
                                 <span>·</span>
                                 <span>
-                                  {TYPE_LABELS[attempt.exercise.type] ??
-                                    attempt.exercise.type}
+                                  {TYPE_LABELS[attempt.exercise.type] ?? attempt.exercise.type}
                                 </span>
                                 <span>·</span>
                                 <span>{formatDate(attempt.completedAt)}</span>
@@ -164,9 +165,7 @@ export default async function HistoricoPage() {
                             <div className="flex items-center gap-2 shrink-0">
                               <Badge
                                 variant="outline"
-                                className={difficultyColor(
-                                  attempt.exercise.difficulty
-                                )}
+                                className={difficultyColor(attempt.exercise.difficulty)}
                               >
                                 {difficultyLabel(attempt.exercise.difficulty)}
                               </Badge>
@@ -182,12 +181,9 @@ export default async function HistoricoPage() {
                             </div>
                           </div>
 
-                          {/* Score bar */}
                           <div className="space-y-1">
                             <div className="flex justify-between text-xs text-muted-foreground">
-                              <span>
-                                {VERDICT_LABEL[verdict] ?? verdict}
-                              </span>
+                              <span>{VERDICT_LABEL[verdict] ?? verdict}</span>
                               <span>
                                 {attempt.score} / {attempt.exercise.points} pts
                               </span>
@@ -195,22 +191,18 @@ export default async function HistoricoPage() {
                             <Progress value={pct} className="h-1.5" />
                           </div>
 
-                          {/* AI Summary */}
                           {(attempt.aiSummary || attempt.aiFeedback) && (
                             <p className="text-sm text-muted-foreground leading-relaxed">
                               {attempt.aiSummary || attempt.aiFeedback}
                             </p>
                           )}
 
-                          {/* Improvements */}
-                          {attempt.aiImprovements &&
-                            attempt.aiImprovements !== "-" && (
-                              <p className="text-xs text-muted-foreground border-l-2 border-primary/30 pl-2 italic">
-                                {attempt.aiImprovements}
-                              </p>
-                            )}
+                          {attempt.aiImprovements && attempt.aiImprovements !== "-" && (
+                            <p className="text-xs text-muted-foreground border-l-2 border-primary/30 pl-2 italic">
+                              {attempt.aiImprovements}
+                            </p>
+                          )}
 
-                          {/* Link */}
                           <Link href={`/exercicios/${attempt.exercise.id}`}>
                             <Button
                               variant="ghost"

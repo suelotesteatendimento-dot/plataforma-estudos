@@ -13,7 +13,20 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { GraduationCap, Loader2, AlertCircle } from "lucide-react";
+import { GraduationCap, Loader2, AlertCircle, Timer } from "lucide-react";
+
+const QUANTITY_OPTIONS = [1, 2, 3, 4, 5, 6, 7, 8, 9, 10];
+const TIME_OPTIONS = [
+  { value: "0", label: "Sem limite de tempo" },
+  { value: "10", label: "10 minutos" },
+  { value: "15", label: "15 minutos" },
+  { value: "20", label: "20 minutos" },
+  { value: "30", label: "30 minutos" },
+  { value: "45", label: "45 minutos" },
+  { value: "60", label: "1 hora" },
+  { value: "90", label: "1h 30min" },
+  { value: "120", label: "2 horas" },
+];
 
 export default function ProvaPage() {
   const router = useRouter();
@@ -24,6 +37,7 @@ export default function ProvaPage() {
   const [type, setType] = useState("theory");
   const [language, setLanguage] = useState("javascript");
   const [quantity, setQuantity] = useState("5");
+  const [duration, setDuration] = useState("0");
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
 
@@ -47,6 +61,7 @@ export default function ProvaPage() {
           type,
           language: isProgramming ? language : undefined,
           quantity: parseInt(quantity),
+          durationMinutes: parseInt(duration) || null,
         }),
       });
       const data = await res.json();
@@ -79,7 +94,8 @@ export default function ProvaPage() {
           <CardTitle className="text-base">Configurar prova</CardTitle>
         </CardHeader>
         <CardContent className="space-y-4">
-          <div className="grid grid-cols-2 gap-4">
+          {/* Matéria + Tema */}
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
             <div className="space-y-1.5">
               <Label>Matéria</Label>
               <Input
@@ -100,16 +116,18 @@ export default function ProvaPage() {
             </div>
           </div>
 
-          <div className="grid grid-cols-2 gap-4">
+          {/* Tipo + Dificuldade */}
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
             <div className="space-y-1.5">
-              <Label>Tipo</Label>
+              <Label>Tipo de questão</Label>
               <Select value={type} onValueChange={setType} disabled={loading}>
                 <SelectTrigger>
                   <SelectValue />
                 </SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="theory">Teórico (dissertativo)</SelectItem>
+                  <SelectItem value="theory">Dissertativo</SelectItem>
                   <SelectItem value="multiple_choice">Múltipla escolha</SelectItem>
+                  <SelectItem value="mixed">Misto (dissertativo + múltipla escolha)</SelectItem>
                   <SelectItem value="programming">Programação</SelectItem>
                 </SelectContent>
               </Select>
@@ -129,6 +147,7 @@ export default function ProvaPage() {
             </div>
           </div>
 
+          {/* Linguagem (só para programação) */}
           {isProgramming && (
             <div className="space-y-1.5">
               <Label>Linguagem</Label>
@@ -147,20 +166,41 @@ export default function ProvaPage() {
             </div>
           )}
 
-          <div className="space-y-1.5">
-            <Label>Quantidade de questões (1–10)</Label>
-            <Select value={quantity} onValueChange={setQuantity} disabled={loading}>
-              <SelectTrigger>
-                <SelectValue />
-              </SelectTrigger>
-              <SelectContent>
-                {[1, 2, 3, 4, 5, 6, 7, 8, 9, 10].map((n) => (
-                  <SelectItem key={n} value={String(n)}>
-                    {n} questão{n !== 1 ? "ões" : ""}
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
+          {/* Quantidade + Tempo */}
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+            <div className="space-y-1.5">
+              <Label>Quantidade de questões</Label>
+              <Select value={quantity} onValueChange={setQuantity} disabled={loading}>
+                <SelectTrigger>
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  {QUANTITY_OPTIONS.map((n) => (
+                    <SelectItem key={n} value={String(n)}>
+                      {n} {n === 1 ? "questão" : "questões"}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+            <div className="space-y-1.5">
+              <Label className="flex items-center gap-1.5">
+                <Timer className="w-3.5 h-3.5 text-muted-foreground" />
+                Tempo limite
+              </Label>
+              <Select value={duration} onValueChange={setDuration} disabled={loading}>
+                <SelectTrigger>
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  {TIME_OPTIONS.map((o) => (
+                    <SelectItem key={o.value} value={o.value}>
+                      {o.label}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
           </div>
 
           {error && (

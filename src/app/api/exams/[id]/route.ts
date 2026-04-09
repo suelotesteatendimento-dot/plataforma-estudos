@@ -1,14 +1,18 @@
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
+import { requireUser } from "@/lib/auth";
 
 export async function GET(
   _req: NextRequest,
   { params }: { params: Promise<{ id: string }> }
 ) {
+  const { userId, errorResponse } = await requireUser();
+  if (errorResponse) return errorResponse;
+
   const { id } = await params;
 
-  const session = await prisma.examSession.findUnique({
-    where: { id },
+  const session = await prisma.examSession.findFirst({
+    where: { id, userId: userId! },
     include: { answers: true },
   });
 
@@ -18,10 +22,9 @@ export async function GET(
 
   const exerciseIds: string[] = JSON.parse(session.exerciseIds);
   const exercises = await prisma.exercise.findMany({
-    where: { id: { in: exerciseIds } },
+    where: { id: { in: exerciseIds }, userId: userId! },
   });
 
-  // Manter a ordem original
   const ordered = exerciseIds
     .map((eid) => exercises.find((e) => e.id === eid))
     .filter(Boolean);

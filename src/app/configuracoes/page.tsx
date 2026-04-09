@@ -1,7 +1,6 @@
 "use client";
 
 import { useState } from "react";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import {
@@ -18,10 +17,9 @@ import {
   CheckCircle2,
   XCircle,
   Loader2,
+  Database,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
-
-// ─── Tipos ───────────────────────────────────────────────────────────────────
 
 type ResetType = "exercises" | "agenda" | "all";
 
@@ -31,13 +29,10 @@ interface ResetConfig {
   description: string;
   details: string[];
   icon: React.ComponentType<{ className?: string }>;
-  iconBg: string;
-  iconColor: string;
+  variant: "warning" | "danger" | "critical";
   buttonLabel: string;
   requireConfirmText: boolean;
 }
-
-// ─── Configuração de cada reset ───────────────────────────────────────────────
 
 const RESETS: ResetConfig[] = [
   {
@@ -46,14 +41,12 @@ const RESETS: ResetConfig[] = [
     description:
       "Apaga todos os exercícios gerados pela IA e o histórico de tentativas. A agenda e o streak não são afetados.",
     details: [
-      "Exercícios e enunciados",
+      "Exercícios e enunciados gerados",
       "Tentativas e correções da IA",
-      "Histórico de exercícios",
       "Sessões e respostas de prova",
     ],
     icon: Trash2,
-    iconBg: "bg-orange-100",
-    iconColor: "text-orange-600",
+    variant: "warning",
     buttonLabel: "Resetar exercícios",
     requireConfirmText: false,
   },
@@ -64,12 +57,11 @@ const RESETS: ResetConfig[] = [
       "Apaga todos os planos de estudo, pontos diários e reinicia o streak. Os exercícios não são afetados.",
     details: [
       "Planos de estudo da agenda",
-      "Pontos acumulados (DailyScore)",
+      "Pontos acumulados",
       "Streak e estatísticas de atividade",
     ],
     icon: CalendarX,
-    iconBg: "bg-yellow-100",
-    iconColor: "text-yellow-600",
+    variant: "danger",
     buttonLabel: "Resetar agenda",
     requireConfirmText: false,
   },
@@ -84,21 +76,36 @@ const RESETS: ResetConfig[] = [
       "Todos os pontos e progresso",
       "Streak e histórico completo",
     ],
-    icon: AlertTriangle,
-    iconBg: "bg-red-100",
-    iconColor: "text-red-600",
+    icon: Database,
+    variant: "critical",
     buttonLabel: "Resetar tudo",
     requireConfirmText: true,
   },
 ];
+
+const VARIANT_STYLES = {
+  warning: {
+    icon: "bg-orange-100 text-orange-600",
+    border: "",
+    button: "border-orange-300 text-orange-700 hover:bg-orange-50",
+  },
+  danger: {
+    icon: "bg-amber-100 text-amber-600",
+    border: "",
+    button: "border-amber-300 text-amber-700 hover:bg-amber-50",
+  },
+  critical: {
+    icon: "bg-red-100 text-red-600",
+    border: "border-destructive/40",
+    button: "",
+  },
+};
 
 const SUCCESS_MESSAGES: Record<ResetType, string> = {
   exercises: "Todos os exercícios e tentativas foram apagados.",
   agenda: "Agenda, pontos e streak foram resetados.",
   all: "Todos os dados foram apagados. A plataforma está zerada.",
 };
-
-// ─── Page ─────────────────────────────────────────────────────────────────────
 
 export default function ConfiguracoesPage() {
   const [active, setActive] = useState<ResetType | null>(null);
@@ -108,8 +115,7 @@ export default function ConfiguracoesPage() {
 
   const config = RESETS.find((r) => r.type === active);
   const canConfirm =
-    !loading &&
-    (active !== "all" || confirmText.trim() === "RESET");
+    !loading && (active !== "all" || confirmText.trim() === "RESET");
 
   function openDialog(type: ResetType) {
     setFlash(null);
@@ -148,107 +154,150 @@ export default function ConfiguracoesPage() {
   }
 
   return (
-    <div className="max-w-2xl mx-auto space-y-6">
+    <div className="max-w-2xl mx-auto space-y-8">
       {/* Header */}
       <div>
-        <h1 className="text-2xl font-bold flex items-center gap-2">
-          <Settings className="w-6 h-6" />
+        <h1 className="text-2xl font-bold flex items-center gap-2.5">
+          <Settings className="w-6 h-6 text-primary" />
           Configurações
         </h1>
-        <p className="text-muted-foreground text-sm mt-1">
-          Gerencie os dados da plataforma.
+        <p className="text-muted-foreground text-sm mt-1.5">
+          Gerencie os dados e preferências da plataforma.
         </p>
       </div>
 
-      {/* Flash message */}
+      {/* Flash */}
       {flash && (
         <div
           className={cn(
-            "flex items-start gap-3 rounded-lg border px-4 py-3 text-sm",
+            "flex items-start gap-3 rounded-xl border px-4 py-3.5 text-sm",
             flash.ok
-              ? "border-green-200 bg-green-50 text-green-800"
-              : "border-destructive/30 bg-destructive/10 text-destructive"
+              ? "border-emerald-200 bg-emerald-50 text-emerald-800"
+              : "border-destructive/30 bg-destructive/5 text-destructive"
           )}
         >
           {flash.ok ? (
-            <CheckCircle2 className="w-4 h-4 mt-0.5 shrink-0 text-green-600" />
+            <CheckCircle2 className="w-4 h-4 mt-0.5 shrink-0 text-emerald-600" />
           ) : (
             <XCircle className="w-4 h-4 mt-0.5 shrink-0" />
           )}
-          {flash.text}
+          <span>{flash.text}</span>
         </div>
       )}
 
-      {/* Reset cards */}
-      <section className="space-y-4">
+      {/* Seção: Dados */}
+      <section className="space-y-3">
         <div>
-          <h2 className="text-base font-semibold">Gerenciar dados</h2>
+          <h2 className="text-sm font-semibold">Gerenciar dados</h2>
           <p className="text-xs text-muted-foreground mt-0.5">
-            Todas as ações abaixo são irreversíveis. Use com cuidado.
+            Todas as ações abaixo são irreversíveis. Prossiga com cuidado.
           </p>
         </div>
 
-        {RESETS.map((r) => {
-          const Icon = r.icon;
-          return (
-            <Card
-              key={r.type}
-              className={cn(r.type === "all" && "border-destructive/40")}
-            >
-              <CardHeader className="pb-3">
-                <CardTitle className="text-base flex items-center gap-3">
+        <div className="rounded-xl border overflow-hidden divide-y">
+          {RESETS.map((r) => {
+            const Icon = r.icon;
+            const styles = VARIANT_STYLES[r.variant];
+
+            return (
+              <div
+                key={r.type}
+                className={cn(
+                  "p-4 sm:p-5",
+                  r.variant === "critical" && "bg-destructive/[0.02]"
+                )}
+              >
+                <div className="flex items-start gap-3 sm:gap-4">
+                  {/* Ícone */}
                   <div
                     className={cn(
-                      "w-9 h-9 rounded-lg flex items-center justify-center shrink-0",
-                      r.iconBg
+                      "w-9 h-9 rounded-lg flex items-center justify-center shrink-0 mt-0.5",
+                      styles.icon
                     )}
                   >
-                    <Icon className={cn("w-4 h-4", r.iconColor)} />
+                    <Icon className="w-4 h-4" />
                   </div>
-                  {r.label}
-                </CardTitle>
-              </CardHeader>
-              <CardContent className="space-y-3">
-                <p className="text-sm text-muted-foreground leading-relaxed">
-                  {r.description}
-                </p>
 
-                {/* What gets deleted */}
-                <ul className="space-y-1">
-                  {r.details.map((d) => (
-                    <li
-                      key={d}
-                      className="flex items-center gap-2 text-xs text-muted-foreground"
+                  {/* Info */}
+                  <div className="flex-1 min-w-0 space-y-1">
+                    <p className="font-medium text-sm">{r.label}</p>
+                    <p className="text-xs text-muted-foreground leading-relaxed">
+                      {r.description}
+                    </p>
+                    <ul className="flex flex-wrap gap-x-3 gap-y-0.5 pt-0.5">
+                      {r.details.map((d) => (
+                        <li
+                          key={d}
+                          className="text-[11px] text-muted-foreground flex items-center gap-1"
+                        >
+                          <span className="w-1 h-1 rounded-full bg-muted-foreground/40" />
+                          {d}
+                        </li>
+                      ))}
+                    </ul>
+                  </div>
+
+                  {/* Ação — desktop */}
+                  <div className="hidden sm:block shrink-0 pt-0.5">
+                    {r.variant === "critical" ? (
+                      <Button
+                        variant="destructive"
+                        size="sm"
+                        onClick={() => openDialog(r.type)}
+                        className="text-xs h-8"
+                      >
+                        <Trash2 className="w-3.5 h-3.5" />
+                        {r.buttonLabel}
+                      </Button>
+                    ) : (
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        onClick={() => openDialog(r.type)}
+                        className={cn("text-xs h-8", styles.button)}
+                      >
+                        <Trash2 className="w-3.5 h-3.5" />
+                        {r.buttonLabel}
+                      </Button>
+                    )}
+                  </div>
+                </div>
+
+                {/* Ação — mobile (full width abaixo) */}
+                <div className="sm:hidden mt-3 pl-12">
+                  {r.variant === "critical" ? (
+                    <Button
+                      variant="destructive"
+                      size="sm"
+                      onClick={() => openDialog(r.type)}
+                      className="text-xs h-8 w-full"
                     >
-                      <Trash2 className="w-3 h-3 shrink-0 text-muted-foreground/60" />
-                      {d}
-                    </li>
-                  ))}
-                </ul>
-
-                <Button
-                  variant={r.type === "all" ? "destructive" : "outline"}
-                  size="sm"
-                  className={cn(
-                    r.type !== "all" &&
-                      "border-destructive/40 text-destructive hover:bg-destructive hover:text-destructive-foreground"
+                      <Trash2 className="w-3.5 h-3.5" />
+                      {r.buttonLabel}
+                    </Button>
+                  ) : (
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={() => openDialog(r.type)}
+                      className={cn("text-xs h-8 w-full", styles.button)}
+                    >
+                      <Trash2 className="w-3.5 h-3.5" />
+                      {r.buttonLabel}
+                    </Button>
                   )}
-                  onClick={() => openDialog(r.type)}
-                >
-                  <Trash2 className="w-3.5 h-3.5" />
-                  {r.buttonLabel}
-                </Button>
-              </CardContent>
-            </Card>
-          );
-        })}
+                </div>
+              </div>
+            );
+          })}
+        </div>
       </section>
 
-      {/* Confirmation dialog */}
+      {/* Dialog de confirmação */}
       <Dialog open={!!active} onOpenChange={(open) => !open && closeDialog()}>
-        <DialogContent>
+        <DialogContent className="max-w-sm">
           <DialogHeader>
-            <DialogTitle className="flex items-center gap-2">
+            <DialogTitle className="flex items-center gap-2 text-base">
               <AlertTriangle className="w-5 h-5 text-destructive" />
               {config?.label}
             </DialogTitle>
@@ -263,27 +312,26 @@ export default function ConfiguracoesPage() {
                 </>
               ) : (
                 <>
-                  Esta ação <strong>não pode ser desfeita</strong>. Os dados
-                  abaixo serão permanentemente removidos:
+                  Esta ação <strong>não pode ser desfeita</strong>. Os seguintes
+                  dados serão permanentemente removidos:
                 </>
               )}
             </p>
 
-            <ul className="space-y-1 rounded-lg border bg-muted/50 p-3">
+            <ul className="space-y-1.5 rounded-lg border bg-muted/40 p-3">
               {config?.details.map((d) => (
                 <li
                   key={d}
                   className="flex items-center gap-2 text-xs text-muted-foreground"
                 >
-                  <Trash2 className="w-3 h-3 shrink-0" />
+                  <span className="w-1 h-1 rounded-full bg-muted-foreground/50 shrink-0" />
                   {d}
                 </li>
               ))}
             </ul>
 
-            {/* Extra confirmation for "all" */}
             {active === "all" && (
-              <div className="space-y-2">
+              <div className="space-y-1.5">
                 <p className="text-xs text-muted-foreground">
                   Digite{" "}
                   <span className="font-mono font-bold text-destructive">
@@ -295,17 +343,16 @@ export default function ConfiguracoesPage() {
                   value={confirmText}
                   onChange={(e) => setConfirmText(e.target.value)}
                   placeholder="RESET"
-                  className="font-mono"
+                  className="font-mono h-9"
                   autoFocus
                 />
               </div>
             )}
 
-            {/* Actions */}
-            <div className="flex gap-3 pt-1">
+            <div className="flex gap-2 pt-1">
               <Button
                 variant="outline"
-                className="flex-1"
+                className="flex-1 h-9"
                 onClick={closeDialog}
                 disabled={loading}
               >
@@ -313,7 +360,7 @@ export default function ConfiguracoesPage() {
               </Button>
               <Button
                 variant="destructive"
-                className="flex-1"
+                className="flex-1 h-9"
                 onClick={handleReset}
                 disabled={!canConfirm}
               >
@@ -325,7 +372,7 @@ export default function ConfiguracoesPage() {
                 ) : (
                   <>
                     <Trash2 className="w-4 h-4" />
-                    Confirmar reset
+                    Confirmar
                   </>
                 )}
               </Button>

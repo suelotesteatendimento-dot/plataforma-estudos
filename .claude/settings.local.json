@@ -7,7 +7,10 @@
       "Bash(npx prisma:*)",
       "Bash(npx next:*)",
       "Bash(taskkill /F /IM node.exe)",
-      "Bash(cmd /c \"taskkill /F /IM node.exe\")"
+      "Bash(cmd /c \"taskkill /F /IM node.exe\")",
+      "Bash(npx tsc:*)",
+      "Bash(DATABASE_URL=\"postgresql://user:pass@localhost:5432/db\" npx prisma:*)",
+      "Bash(DATABASE_URL=\"postgresql://user:pass@localhost:5432/db\" NEXT_PUBLIC_SUPABASE_URL=\"https://xxx.supabase.co\" NEXT_PUBLIC_SUPABASE_ANON_KEY=\"eyJ\" SUPABASE_SERVICE_ROLE_KEY=\"eyJ\" GROQ_API_KEY=\"gsk_x\" npx next build)"
     ]
   }
 }

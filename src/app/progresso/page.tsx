@@ -1,6 +1,8 @@
 export const dynamic = "force-dynamic";
 
 import { prisma } from "@/lib/prisma";
+import { createClient } from "@/lib/supabase/server";
+import { redirect } from "next/navigation";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Progress } from "@/components/ui/progress";
@@ -11,7 +13,7 @@ import {
 import { difficultyColor, difficultyLabel, formatDate } from "@/lib/utils";
 import { StatCard } from "@/components/dashboard/stat-card";
 
-async function getProgressData() {
+async function getProgressData(userId: string) {
   const [
     allAttempts,
     allScores,
@@ -19,19 +21,22 @@ async function getProgressData() {
     last14Scores,
     subjectStats,
   ] = await Promise.all([
-    prisma.exerciseAttempt.count(),
-    prisma.dailyScore.findMany(),
+    prisma.exerciseAttempt.count({ where: { userId } }),
+    prisma.dailyScore.findMany({ where: { userId } }),
     prisma.exerciseAttempt.findMany({
+      where: { userId },
       include: {
         exercise: { select: { difficulty: true, subject: true, points: true } },
       },
     }),
     prisma.dailyScore.findMany({
+      where: { userId },
       orderBy: { date: "asc" },
       take: 14,
     }),
     prisma.exercise.groupBy({
       by: ["subject"],
+      where: { userId },
       _count: { id: true },
     }),
   ]);
@@ -42,7 +47,6 @@ async function getProgressData() {
     allScores[0] ?? { date: new Date(), totalPoints: 0 }
   );
 
-  // By difficulty
   const byDifficulty: Record<string, { count: number; points: number }> = {};
   for (const a of exerciseStats) {
     const d = a.exercise.difficulty;
@@ -51,12 +55,10 @@ async function getProgressData() {
     byDifficulty[d].points += a.score;
   }
 
-  // By subject (top 5)
   const bySubject = subjectStats
     .sort((a, b) => b._count.id - a._count.id)
     .slice(0, 5);
 
-  // Streak (dias consecutivos com pontos)
   let streak = 0;
   const today = new Date();
   today.setHours(0, 0, 0, 0);
@@ -85,7 +87,11 @@ async function getProgressData() {
 }
 
 export default async function ProgressoPage() {
-  const data = await getProgressData();
+  const supabase = await createClient();
+  const { data: { user } } = await supabase.auth.getUser();
+  if (!user) redirect("/login");
+
+  const data = await getProgressData(user.id);
   const maxScore = Math.max(...data.last14Scores.map((s) => s.totalPoints), 1);
   const diffs = ["easy", "medium", "hard"];
 
@@ -101,7 +107,6 @@ export default async function ProgressoPage() {
         </p>
       </div>
 
-      {/* Stat cards */}
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
         <StatCard
           label="Pontos acumulados"
@@ -137,7 +142,6 @@ export default async function ProgressoPage() {
       </div>
 
       <div className="grid lg:grid-cols-2 gap-6">
-        {/* Daily points chart */}
         <Card>
           <CardHeader className="pb-3">
             <CardTitle className="text-base flex items-center gap-2">
@@ -174,7 +178,6 @@ export default async function ProgressoPage() {
           </CardContent>
         </Card>
 
-        {/* By difficulty */}
         <Card>
           <CardHeader className="pb-3">
             <CardTitle className="text-base flex items-center gap-2">
@@ -205,10 +208,7 @@ export default async function ProgressoPage() {
                     <div key={diff} className="space-y-1.5">
                       <div className="flex items-center justify-between">
                         <div className="flex items-center gap-2">
-                          <Badge
-                            variant="outline"
-                            className={difficultyColor(diff)}
-                          >
+                          <Badge variant="outline" className={difficultyColor(diff)}>
                             {difficultyLabel(diff)}
                           </Badge>
                           <span className="text-sm text-muted-foreground">
@@ -229,7 +229,6 @@ export default async function ProgressoPage() {
         </Card>
       </div>
 
-      {/* By subject */}
       {data.bySubject.length > 0 && (
         <Card>
           <CardHeader className="pb-3">

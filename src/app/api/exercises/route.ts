@@ -2,9 +2,14 @@ import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { generateExercises, type Difficulty, type ExerciseType } from "@/lib/groq";
 import { getPoints } from "@/lib/utils";
+import { requireUser } from "@/lib/auth";
 
 export async function GET() {
+  const { userId, errorResponse } = await requireUser();
+  if (errorResponse) return errorResponse;
+
   const exercises = await prisma.exercise.findMany({
+    where: { userId: userId! },
     orderBy: { createdAt: "desc" },
     include: { _count: { select: { attempts: true } } },
   });
@@ -12,6 +17,9 @@ export async function GET() {
 }
 
 export async function POST(req: NextRequest) {
+  const { userId, errorResponse } = await requireUser();
+  if (errorResponse) return errorResponse;
+
   const body = await req.json();
   const { subject, topic, difficulty, type, language, quantity = 1 } = body;
 
@@ -39,6 +47,7 @@ export async function POST(req: NextRequest) {
       generated.map((ex) =>
         prisma.exercise.create({
           data: {
+            userId: userId!,
             title: ex.title ?? topic,
             subject,
             topic,

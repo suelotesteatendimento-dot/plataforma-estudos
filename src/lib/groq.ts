@@ -424,4 +424,133 @@ Retorne JSON (sem texto fora do JSON):
   };
 }
 
+// ─── Flashcards ───────────────────────────────────────────────────────────────
+
+export interface Flashcard {
+  front: string;
+  back: string;
+}
+
+export interface FlashcardParams {
+  subject: string;
+  topic: string;
+  difficulty: Difficulty;
+  quantity: number;
+  context?: string;
+}
+
+export async function generateFlashcards(params: FlashcardParams): Promise<Flashcard[]> {
+  const { subject, topic, difficulty, quantity, context } = params;
+  const diffLabel = { easy: "fácil", medium: "médio", hard: "difícil" }[difficulty];
+  const qty = Math.min(Math.max(1, quantity), 20);
+
+  const prompt = `Crie exatamente ${qty} flashcard(s) sobre "${subject} - ${topic}", nível ${diffLabel}.
+${context ? `Contexto adicional: ${context}` : ""}
+
+Cada flashcard deve ter uma pergunta objetiva na frente e uma resposta clara e didática no verso.
+Retorne SOMENTE JSON válido:
+{
+  "flashcards": [
+    { "front": "pergunta ou conceito", "back": "resposta ou explicação" }
+  ]
+}`;
+
+  const res = await groq.chat.completions.create({
+    model: GROQ_MODEL,
+    messages: [
+      { role: "system", content: "Você é um professor criando material de revisão. Responda SOMENTE com JSON válido." },
+      { role: "user", content: prompt },
+    ],
+    temperature: 0.6,
+    max_tokens: 2048,
+    response_format: { type: "json_object" },
+  });
+
+  const raw = res.choices[0]?.message?.content ?? "";
+  const parsed = extractJSON(raw);
+  if (!parsed || typeof parsed !== "object" || Array.isArray(parsed)) return [];
+
+  const obj = parsed as Record<string, unknown>;
+  const items = Array.isArray(obj.flashcards) ? (obj.flashcards as unknown[]) : [];
+
+  return items
+    .filter((item): item is Record<string, unknown> => typeof item === "object" && item !== null)
+    .map((item) => ({
+      front: strOrEmpty(item.front) || "—",
+      back: strOrEmpty(item.back) || "—",
+    }))
+    .filter((fc) => fc.front !== "—" || fc.back !== "—");
+}
+
+// ─── Study Summary ────────────────────────────────────────────────────────────
+
+export interface SummaryResult {
+  title: string;
+  introduction: string;
+  mainContent: string[];
+  importantTopics: string[];
+  examples: string[];
+  commonMistakes: string[];
+  examTips: string[];
+  finalReview: string[];
+}
+
+export interface SummaryParams {
+  subject: string;
+  topic: string;
+  level: string;
+  objective: string;
+  context?: string;
+}
+
+export async function generateSummary(params: SummaryParams): Promise<SummaryResult | null> {
+  const { subject, topic, level, objective, context } = params;
+
+  const prompt = `Crie um resumo completo e didático sobre "${subject} - ${topic}" para um aluno de nível "${level}".
+Objetivo do estudo: ${objective}.
+${context ? `Contexto adicional: ${context}` : ""}
+
+Retorne SOMENTE JSON válido:
+{
+  "title": "título do resumo",
+  "introduction": "introdução em 2-3 frases",
+  "mainContent": ["parágrafo 1", "parágrafo 2", "parágrafo 3"],
+  "importantTopics": ["tópico importante 1", "tópico importante 2"],
+  "examples": ["exemplo prático 1", "exemplo prático 2"],
+  "commonMistakes": ["erro comum 1", "erro comum 2"],
+  "examTips": ["dica para prova 1", "dica para prova 2"],
+  "finalReview": ["ponto de revisão 1", "ponto de revisão 2"]
+}`;
+
+  const res = await groq.chat.completions.create({
+    model: GROQ_MODEL,
+    messages: [
+      { role: "system", content: "Você é um professor especialista criando material de estudo. Responda SOMENTE com JSON válido." },
+      { role: "user", content: prompt },
+    ],
+    temperature: 0.5,
+    max_tokens: 3000,
+    response_format: { type: "json_object" },
+  });
+
+  const raw = res.choices[0]?.message?.content ?? "";
+  const parsed = extractJSON(raw);
+  if (!parsed || typeof parsed !== "object" || Array.isArray(parsed)) return null;
+
+  const obj = parsed as Record<string, unknown>;
+  const toArr = (v: unknown): string[] =>
+    Array.isArray(v) ? (v as unknown[]).map((x) => strOrEmpty(x)).filter(Boolean) : [];
+
+  return {
+    title: strOrEmpty(obj.title) || `${subject} — ${topic}`,
+    introduction: strOrEmpty(obj.introduction) || "",
+    mainContent: toArr(obj.mainContent),
+    importantTopics: toArr(obj.importantTopics),
+    examples: toArr(obj.examples),
+    commonMistakes: toArr(obj.commonMistakes),
+    examTips: toArr(obj.examTips),
+    finalReview: toArr(obj.finalReview),
+  };
+}
+
 export default groq;

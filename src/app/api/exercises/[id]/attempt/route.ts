@@ -3,16 +3,20 @@ import { prisma } from "@/lib/prisma";
 import { reviewExercise, type ExerciseType } from "@/lib/groq";
 import { getPoints } from "@/lib/utils";
 import { updateStreak } from "@/lib/streak";
+import { requireUser } from "@/lib/auth";
 
 export async function POST(
   req: NextRequest,
   { params }: { params: Promise<{ id: string }> }
 ) {
+  const { userId, errorResponse } = await requireUser();
+  if (errorResponse) return errorResponse;
+
   const { id } = await params;
   const body = await req.json();
   const { answerText, answerCode } = body;
 
-  const exercise = await prisma.exercise.findUnique({ where: { id } });
+  const exercise = await prisma.exercise.findFirst({ where: { id, userId: userId! } });
   if (!exercise) {
     return NextResponse.json({ error: "Exercício não encontrado" }, { status: 404 });
   }
@@ -45,13 +49,14 @@ export async function POST(
 
   // Primeira conclusão válida é a única que gera pontos
   const alreadyCompleted = await prisma.exerciseAttempt.findFirst({
-    where: { exerciseId: id, pointsAwarded: true },
+    where: { exerciseId: id, userId: userId!, pointsAwarded: true },
     select: { id: true },
   });
   const pointsAwarded = !alreadyCompleted;
 
   const attempt = await prisma.exerciseAttempt.create({
     data: {
+      userId: userId!,
       exerciseId: id,
       answerText: exercise.type !== "programming" ? answerText : null,
       answerCode: exercise.type === "programming" ? answerCode : null,
@@ -67,18 +72,17 @@ export async function POST(
     },
   });
 
-  // Acumula pontos apenas na primeira conclusão
   if (pointsAwarded) {
     const today = new Date();
     today.setHours(0, 0, 0, 0);
     await prisma.dailyScore.upsert({
-      where: { date: today },
-      create: { date: today, totalPoints: earnedPoints },
+      where: { date_userId: { date: today, userId: userId! } },
+      create: { userId: userId!, date: today, totalPoints: earnedPoints },
       update: { totalPoints: { increment: earnedPoints } },
     });
   }
 
-  await updateStreak();
+  await updateStreak(userId!);
 
   return NextResponse.json({
     attempt,
