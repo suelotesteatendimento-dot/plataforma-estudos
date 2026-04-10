@@ -8,7 +8,6 @@ import {
   Menu,
   X,
   BookOpen,
-  Flame,
   LayoutDashboard,
   CalendarDays,
   Dumbbell,
@@ -20,12 +19,13 @@ import {
   LogOut,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
+import { StreakWidget } from "./streak-widget";
 
 const NAV_SECTIONS = [
   {
     label: "Geral",
     items: [
-      { href: "/", label: "Dashboard", icon: LayoutDashboard },
+      { href: "/dashboard", label: "Dashboard", icon: LayoutDashboard },
       { href: "/agenda", label: "Agenda", icon: CalendarDays },
       { href: "/exercicios", label: "Exercícios", icon: Dumbbell },
       { href: "/prova", label: "Modo Prova", icon: GraduationCap },
@@ -48,7 +48,7 @@ const NAV_SECTIONS = [
 ];
 
 function isActive(pathname: string, href: string): boolean {
-  if (href === "/") return pathname === "/";
+  if (href === "/dashboard") return pathname === "/dashboard";
   // Prevent /configuracoes matching /configuracoes/convites
   if (href === "/configuracoes") {
     return pathname === "/configuracoes";
@@ -59,7 +59,6 @@ function isActive(pathname: string, href: string): boolean {
 export function MobileNav() {
   const [open, setOpen] = useState(false);
   const [userEmail, setUserEmail] = useState<string | null>(null);
-  const [streak, setStreak] = useState(0);
   const pathname = usePathname();
 
   useEffect(() => {
@@ -69,19 +68,14 @@ export function MobileNav() {
     });
   }, []);
 
-  useEffect(() => {
-    fetch("/api/user/streak")
-      .then((r) => r.json())
-      .then((d) => setStreak(d.currentStreak ?? 0))
-      .catch(() => {});
-  }, []);
-
   // Close drawer on route change
   useEffect(() => {
     setOpen(false);
   }, [pathname]);
 
-  function handleLogout() {
+  async function handleLogout() {
+    const supabase = createClient();
+    await supabase.auth.signOut();
     window.location.href = "/login";
   }
 
@@ -105,21 +99,8 @@ export function MobileNav() {
         </div>
 
         {/* Streak badge on header */}
-        <div
-          className={cn(
-            "flex items-center gap-1 px-2.5 py-1 rounded-full border text-xs font-semibold",
-            streak > 0
-              ? "bg-orange-50 border-orange-200 text-orange-600"
-              : "bg-muted border-border text-muted-foreground/50"
-          )}
-        >
-          <Flame
-            className={cn(
-              "w-3.5 h-3.5",
-              streak > 0 ? "text-orange-500" : "text-muted-foreground/40"
-            )}
-          />
-          {streak}
+        <div data-tour="streak">
+          <StreakWidget size="compact" />
         </div>
       </header>
 
@@ -163,30 +144,7 @@ export function MobileNav() {
 
         {/* Streak */}
         <div className="px-3 py-2.5 border-b">
-          <div
-            className={cn(
-              "flex items-center gap-2 px-3 py-2 rounded-lg",
-              streak > 0 ? "bg-orange-50 border border-orange-200" : "bg-muted/50"
-            )}
-          >
-            <Flame
-              className={cn(
-                "w-5 h-5 shrink-0",
-                streak > 0 ? "text-orange-500" : "text-muted-foreground/40"
-              )}
-            />
-            <div>
-              <p
-                className={cn(
-                  "text-sm font-bold leading-none",
-                  streak > 0 ? "text-orange-600" : "text-muted-foreground/50"
-                )}
-              >
-                {streak} {streak === 1 ? "dia" : "dias"}
-              </p>
-              <p className="text-[10px] text-muted-foreground mt-0.5">sequência</p>
-            </div>
-          </div>
+          <StreakWidget size="full" />
         </div>
 
         {/* Nav sections */}

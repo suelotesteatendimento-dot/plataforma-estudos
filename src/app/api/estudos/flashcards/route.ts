@@ -4,6 +4,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { generateFlashcards, type Difficulty } from "@/lib/groq";
 import { requireUser } from "@/lib/auth";
+import { updateStreak } from "@/lib/streak";
 
 export async function POST(req: NextRequest) {
   const { userId, errorResponse } = await requireUser();
@@ -55,6 +56,7 @@ export async function POST(req: NextRequest) {
         cards: JSON.stringify(flashcards),
       },
     });
+    await updateStreak(userId!);
     return NextResponse.json({ id: set.id, flashcards });
   } catch (err) {
     console.error("[estudos/flashcards] Erro ao salvar:", err);

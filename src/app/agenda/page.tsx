@@ -1,13 +1,19 @@
 export const dynamic = "force-dynamic";
 
 import { prisma } from "@/lib/prisma";
+import { createClient } from "@/lib/supabase/server";
+import { redirect } from "next/navigation";
 import { AgendaClient } from "./agenda-client";
 
-async function getPlans() {
-  return prisma.studyPlan.findMany({ orderBy: { studyDate: "asc" } });
-}
-
 export default async function AgendaPage() {
-  const plans = await getPlans();
+  const supabase = await createClient();
+  const { data: { user } } = await supabase.auth.getUser();
+  if (!user) redirect("/login");
+
+  const plans = await prisma.studyPlan.findMany({
+    where: { userId: user.id },
+    orderBy: { studyDate: "asc" },
+  });
+
   return <AgendaClient initialPlans={plans} />;
 }

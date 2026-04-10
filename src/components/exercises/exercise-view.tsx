@@ -30,6 +30,7 @@ import {
 } from "lucide-react";
 import { cn, difficultyLabel, difficultyColor } from "@/lib/utils";
 import { MonacoEditor, getStarterCode } from "./monaco-editor";
+import { playSound } from "@/lib/sounds";
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
@@ -145,9 +146,14 @@ export function ExerciseView({ exercise }: { exercise: ExerciseWithAttempts }) {
       const data = await res.json();
       if (!res.ok) {
         setError(data.error ?? "Erro ao corrigir com IA.");
+        playSound("error");
         return;
       }
       setResult(data);
+      const verdict = data.review?.finalVerdict;
+      if (verdict === "aprovado") playSound("success");
+      else if (verdict === "parcial") playSound("partial");
+      else playSound("error");
       setTimeout(
         () =>
           document

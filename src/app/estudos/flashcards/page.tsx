@@ -25,6 +25,7 @@ import {
   RefreshCw,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
+import { playSound } from "@/lib/sounds";
 
 interface Flashcard {
   front: string;
@@ -258,7 +259,7 @@ export default function FlashcardsPage() {
           <div
             className="cursor-pointer select-none"
             style={{ perspective: "1200px" }}
-            onClick={() => setFlipped((f) => !f)}
+            onClick={() => { setFlipped((f) => !f); playSound("flip"); }}
           >
             <div
               style={{

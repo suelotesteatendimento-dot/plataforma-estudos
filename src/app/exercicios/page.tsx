@@ -2,6 +2,8 @@ export const dynamic = "force-dynamic";
 
 import Link from "next/link";
 import { prisma } from "@/lib/prisma";
+import { createClient } from "@/lib/supabase/server";
+import { redirect } from "next/navigation";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -26,7 +28,12 @@ const TYPE_LABELS: Record<string, string> = {
 };
 
 export default async function ExerciciosPage() {
+  const supabase = await createClient();
+  const { data: { user } } = await supabase.auth.getUser();
+  if (!user) redirect("/login");
+
   const exercises = await prisma.exercise.findMany({
+    where: { userId: user.id },
     orderBy: { createdAt: "desc" },
     include: {
       _count: { select: { attempts: true } },

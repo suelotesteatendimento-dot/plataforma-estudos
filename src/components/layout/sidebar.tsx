@@ -11,16 +11,16 @@ import {
   Settings,
   LogOut,
   Ticket,
-  Flame,
   Layers,
   ScrollText,
 } from "lucide-react";
+import { StreakWidget } from "./streak-widget";
 import { cn } from "@/lib/utils";
 import { createClient } from "@/lib/supabase/client";
 import { useEffect, useState } from "react";
 
 const mainNav = [
-  { href: "/", label: "Dashboard", icon: LayoutDashboard },
+  { href: "/dashboard", label: "Dashboard", icon: LayoutDashboard },
   { href: "/agenda", label: "Agenda", icon: CalendarDays },
   { href: "/exercicios", label: "Exercícios", icon: Dumbbell },
   { href: "/prova", label: "Modo Prova", icon: GraduationCap },
@@ -31,15 +31,18 @@ function NavItem({
   label,
   icon: Icon,
   active,
+  tourId,
 }: {
   href: string;
   label: string;
   icon: React.ElementType;
   active: boolean;
+  tourId?: string;
 }) {
   return (
     <Link
       href={href}
+      data-tour={tourId}
       className={cn(
         "flex items-center gap-2.5 px-3 py-2 rounded-lg text-sm font-medium transition-all duration-150",
         active
@@ -56,20 +59,12 @@ function NavItem({
 export function Sidebar() {
   const pathname = usePathname();
   const [userEmail, setUserEmail] = useState<string | null>(null);
-  const [streak, setStreak] = useState<number>(0);
 
   useEffect(() => {
     const supabase = createClient();
     supabase.auth.getUser().then(({ data: { user } }) => {
       setUserEmail(user?.email ?? null);
     });
-  }, []);
-
-  useEffect(() => {
-    fetch("/api/user/streak")
-      .then((r) => r.json())
-      .then((d) => setStreak(d.currentStreak ?? 0))
-      .catch(() => {});
   }, []);
 
   async function handleLogout() {
@@ -79,7 +74,7 @@ export function Sidebar() {
   }
 
   function isActive(href: string) {
-    if (href === "/") return pathname === "/";
+    if (href === "/dashboard") return pathname === "/dashboard";
     return pathname === href || pathname.startsWith(href + "/");
   }
 
@@ -108,27 +103,9 @@ export function Sidebar() {
         </div>
       </div>
 
-      {/* Streak bar */}
-      <div className="px-3 py-2.5 border-b">
-        <div
-          className={cn(
-            "flex items-center gap-2 px-3 py-2 rounded-lg",
-            streak > 0 ? "bg-orange-50 border border-orange-200" : "bg-muted/50"
-          )}
-        >
-          <Flame
-            className={cn(
-              "w-5 h-5 shrink-0",
-              streak > 0 ? "text-orange-500" : "text-muted-foreground/40"
-            )}
-          />
-          <div className="min-w-0">
-            <p className={cn("text-sm font-bold leading-none", streak > 0 ? "text-orange-600" : "text-muted-foreground/50")}>
-              {streak} {streak === 1 ? "dia" : "dias"}
-            </p>
-            <p className="text-[10px] text-muted-foreground mt-0.5">sequência</p>
-          </div>
-        </div>
+      {/* Streak */}
+      <div className="px-3 py-2.5 border-b" data-tour="streak">
+        <StreakWidget size="full" />
       </div>
 
       {/* Nav */}
@@ -140,15 +117,23 @@ export function Sidebar() {
           </p>
         </div>
 
-        {mainNav.map(({ href, label, icon }) => (
-          <NavItem
-            key={href}
-            href={href}
-            label={label}
-            icon={icon}
-            active={isActive(href)}
-          />
-        ))}
+        {mainNav.map(({ href, label, icon }) => {
+          const tourId =
+            href === "/dashboard" ? "dashboard" :
+            href === "/agenda" ? "agenda" :
+            href === "/exercicios" ? "exercicios" :
+            href === "/prova" ? "prova" : undefined;
+          return (
+            <NavItem
+              key={href}
+              href={href}
+              label={label}
+              icon={icon}
+              active={isActive(href)}
+              tourId={tourId}
+            />
+          );
+        })}
 
         {/* Estudos */}
         <div className="pt-4 pb-2">
@@ -161,6 +146,7 @@ export function Sidebar() {
           label="Flashcards"
           icon={Layers}
           active={isActive("/estudos/flashcards")}
+          tourId="estudos"
         />
         <NavItem
           href="/estudos/resumos"
@@ -182,6 +168,7 @@ export function Sidebar() {
           label="Configurações"
           icon={Settings}
           active={configActive}
+          tourId="configuracoes"
         />
         <NavItem
           href="/configuracoes/convites"

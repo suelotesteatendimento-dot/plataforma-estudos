@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import {
@@ -18,8 +18,13 @@ import {
   XCircle,
   Loader2,
   Database,
+  Volume2,
+  VolumeX,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
+import { isSoundEnabled, setSoundEnabled, playSound } from "@/lib/sounds";
+import { resetTour } from "@/components/tour";
+import { Compass } from "lucide-react";
 
 type ResetType = "exercises" | "agenda" | "all";
 
@@ -107,6 +112,58 @@ const SUCCESS_MESSAGES: Record<ResetType, string> = {
   all: "Todos os dados foram apagados. A plataforma está zerada.",
 };
 
+function SoundToggle() {
+  const [enabled, setEnabled] = useState(true);
+
+  useEffect(() => {
+    setEnabled(isSoundEnabled());
+  }, []);
+
+  function toggle() {
+    const next = !enabled;
+    setEnabled(next);
+    setSoundEnabled(next);
+    if (next) playSound("success");
+  }
+
+  return (
+    <div className="p-4 sm:p-5 flex items-center gap-4">
+      <div
+        className={cn(
+          "w-9 h-9 rounded-lg flex items-center justify-center shrink-0",
+          enabled ? "bg-blue-100 text-blue-600" : "bg-muted text-muted-foreground"
+        )}
+      >
+        {enabled ? <Volume2 className="w-4 h-4" /> : <VolumeX className="w-4 h-4" />}
+      </div>
+      <div className="flex-1 min-w-0">
+        <p className="font-medium text-sm">Sons de interface</p>
+        <p className="text-xs text-muted-foreground mt-0.5">
+          {enabled
+            ? "Sons ativados — feedback sonoro nas ações."
+            : "Sons desativados — experiência silenciosa."}
+        </p>
+      </div>
+      <button
+        onClick={toggle}
+        className={cn(
+          "relative inline-flex h-6 w-11 shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors duration-200",
+          enabled ? "bg-primary" : "bg-muted-foreground/30"
+        )}
+        role="switch"
+        aria-checked={enabled}
+      >
+        <span
+          className={cn(
+            "pointer-events-none inline-block h-5 w-5 rounded-full bg-white shadow-sm ring-0 transition-transform duration-200",
+            enabled ? "translate-x-5" : "translate-x-0"
+          )}
+        />
+      </button>
+    </div>
+  );
+}
+
 export default function ConfiguracoesPage() {
   const [active, setActive] = useState<ResetType | null>(null);
   const [confirmText, setConfirmText] = useState("");
@@ -184,6 +241,39 @@ export default function ConfiguracoesPage() {
           <span>{flash.text}</span>
         </div>
       )}
+
+      {/* Seção: Preferências */}
+      <section className="space-y-3">
+        <div>
+          <h2 className="text-sm font-semibold">Preferências</h2>
+          <p className="text-xs text-muted-foreground mt-0.5">
+            Personalize a experiência da plataforma.
+          </p>
+        </div>
+        <div className="rounded-xl border overflow-hidden divide-y">
+          <SoundToggle />
+          <div className="p-4 sm:p-5 flex items-center gap-4">
+            <div className="w-9 h-9 rounded-lg flex items-center justify-center shrink-0 bg-indigo-100 text-indigo-600">
+              <Compass className="w-4 h-4" />
+            </div>
+            <div className="flex-1 min-w-0">
+              <p className="font-medium text-sm">Tour guiado</p>
+              <p className="text-xs text-muted-foreground mt-0.5">
+                Reveja o tour de boas-vindas pela plataforma.
+              </p>
+            </div>
+            <button
+              onClick={() => {
+                resetTour();
+                window.dispatchEvent(new Event("tour:start"));
+              }}
+              className="text-xs font-medium text-indigo-600 hover:text-indigo-700 px-3 py-1.5 rounded-lg border border-indigo-200 hover:bg-indigo-50 transition-colors shrink-0"
+            >
+              Ver tour
+            </button>
+          </div>
+        </div>
+      </section>
 
       {/* Seção: Dados */}
       <section className="space-y-3">

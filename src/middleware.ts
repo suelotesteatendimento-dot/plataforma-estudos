@@ -33,23 +33,23 @@ export async function middleware(request: NextRequest) {
 
   const pathname = request.nextUrl.pathname;
 
-  const isAuthPage =
-    pathname === "/login" || pathname === "/register";
+  const isAuthPage = pathname === "/login" || pathname === "/register";
   const isApiAuth = pathname.startsWith("/api/auth/");
-  const isPublic = isAuthPage || isApiAuth;
+  // Public: landing page, auth pages, API auth routes
+  const isPublic = pathname === "/" || isAuthPage || isApiAuth;
+
+  // Rotas protegidas: /dashboard e tudo mais que não for público
+  const isProtected = !isPublic;
 
   // Não autenticado → redireciona para /login (exceto rotas públicas)
-  if (!user && !isPublic) {
+  if (!user && isProtected) {
     return NextResponse.redirect(new URL("/login", request.url));
   }
 
-  // Autenticado → redireciona para / se tentar acessar /login ou /register
+  // Autenticado → redireciona para /dashboard se tentar acessar /login ou /register
   if (user && isAuthPage) {
-    return NextResponse.redirect(new URL("/", request.url));
+    return NextResponse.redirect(new URL("/dashboard", request.url));
   }
-
-  // Passa o pathname para o layout via header
-  response.headers.set("x-pathname", pathname);
 
   return response;
 }

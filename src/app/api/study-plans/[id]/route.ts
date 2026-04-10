@@ -17,8 +17,16 @@ export async function PATCH(req: NextRequest, { params }: { params: Promise<{ id
     data: body,
   });
 
-  if (body.status === "done") {
-    await updateStreak(userId!);
+  // Conta streak apenas para planos de HOJE em andamento ou concluídos
+  const isActiveStatus = body.status === "done" || body.status === "in_progress";
+  if (isActiveStatus) {
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+    const planDay = new Date(plan.studyDate);
+    planDay.setHours(0, 0, 0, 0);
+    if (planDay.getTime() === today.getTime()) {
+      await updateStreak(userId!);
+    }
   }
 
   return NextResponse.json(plan);

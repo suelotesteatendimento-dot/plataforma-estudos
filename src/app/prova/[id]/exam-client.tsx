@@ -30,6 +30,7 @@ import {
 } from "lucide-react";
 import { cn, difficultyLabel, difficultyColor } from "@/lib/utils";
 import { MonacoEditor, getStarterCode } from "@/components/exercises/monaco-editor";
+import { playSound } from "@/lib/sounds";
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
@@ -169,6 +170,7 @@ export function ExamClient({ session, exercises }: Props) {
           return;
         }
         setFinishData(data as FinishData);
+        playSound("finish");
       } catch {
         setError("Erro de conexão.");
       } finally {
@@ -479,7 +481,7 @@ export function ExamClient({ session, exercises }: Props) {
           <Link href="/prova" className="flex-1">
             <Button variant="outline" className="w-full">Nova prova</Button>
           </Link>
-          <Link href="/" className="flex-1">
+          <Link href="/dashboard" className="flex-1">
             <Button className="w-full">
               <Trophy className="w-4 h-4" />
               Ver dashboard

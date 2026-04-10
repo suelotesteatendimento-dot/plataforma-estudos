@@ -4,6 +4,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { generateSummary } from "@/lib/groq";
 import { requireUser } from "@/lib/auth";
+import { updateStreak } from "@/lib/streak";
 
 export async function POST(req: NextRequest) {
   const { userId, errorResponse } = await requireUser();
@@ -55,6 +56,7 @@ export async function POST(req: NextRequest) {
         content: JSON.stringify(summary),
       },
     });
+    await updateStreak(userId!);
     return NextResponse.json({ id: saved.id, summary });
   } catch (err) {
     console.error("[estudos/resumos] Erro ao salvar:", err);
